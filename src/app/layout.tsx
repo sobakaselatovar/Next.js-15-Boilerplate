@@ -1,9 +1,8 @@
+import { ColorSchemeScript, MantineProvider, mantineHtmlProps } from '@mantine/core';
 import '@mantine/core/styles.css';
 
-import React from 'react';
-import { ColorSchemeScript, mantineHtmlProps, MantineProvider } from '@mantine/core';
-
 import { theme } from './theme';
+import React from 'react';
 
 export const metadata = {
   title: 'Mantine Next.js template',

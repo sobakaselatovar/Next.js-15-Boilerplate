@@ -11,4 +11,16 @@ module.exports = {
   bracketSpacing: true,
   arrowParens: 'avoid',
   endOfLine: 'auto',
+  plugins: ['@trivago/prettier-plugin-sort-imports'],
+  importOrder: [
+    '^next/(.*)$', // Импорты из Next.js
+    '^react/(.*)$', // Импорты из React
+    '^@mantine/(.*)$', // Импорты из Mantine
+    '^[^@].*$', // Другие пакеты (не начинающиеся с @)
+    '^@/(.*)$', // Импорты из @
+    '^\\.\\./', // Импорты из родительских директорий
+    '^\\./', // Локальные импорты
+  ],
+  importOrderSeparation: true,
+  importOrderSortSpecifiers: true,
 };

@@ -24,7 +24,7 @@ module.exports = {
     ecmaVersion: 2021,
     sourceType: 'module',
   },
-  plugins: ['import', '@typescript-eslint', 'react', 'simple-import-sort', 'prettier'],
+  plugins: ['@typescript-eslint', 'react', 'prettier'],
   root: true,
   rules: {
     'prettier/prettier': ['error', { endOfLine: 'auto' }],
@@ -33,22 +33,9 @@ module.exports = {
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     '@typescript-eslint/no-use-before-define': ['error'],
     'consistent-return': 'error',
-    'import/extensions': 'off',
+    'import/extensions': 'on',
     '@typescript-eslint/no-explicit-any': 'off',
     'react/require-default-props': 'off',
-    'import/order': [
-      'warn',
-      {
-        'newlines-between': 'always',
-        pathGroups: [
-          {
-            group: 'external',
-            pattern: '@/**',
-            position: 'after',
-          },
-        ],
-      },
-    ],
     'import/prefer-default-export': 'off',
     'jsx-a11y/anchor-is-valid': [
       'error',
@@ -67,8 +54,6 @@ module.exports = {
     'react/no-unescaped-entities': 'off',
     'react/prop-types': 'off',
     'react/react-in-jsx-scope': 'off',
-    // 'simple-import-sort/exports': 'error',
-    // 'simple-import-sort/imports': 'error',
     'sort-keys': 'off',
     'no-unused-vars': 'error',
     'react/function-component-definition': [
@@ -80,7 +65,6 @@ module.exports = {
     ],
   },
   settings: {
-    // TypeScript needs this to resolve nextjs absolute imports
     'import/resolver': {
       typescript: {
         project: '.',
