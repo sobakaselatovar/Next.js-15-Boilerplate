@@ -93,8 +93,8 @@ export function Scroller({ loader, children, fetchMoreData, height = '400px' }: 
 ```
 
 ```
-import { useEffect, useState, useCallback } from 'react';
-import axios, { AxiosRequestConfig, Method } from 'axios';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import axios, { AxiosRequestConfig, Method, AxiosError, isCancel } from 'axios';
 import { showNotification } from '@mantine/notifications';
 
 interface UseFetchProps<T> {
@@ -109,50 +109,57 @@ interface UseFetchProps<T> {
     success?: {
       [key in Method]?: string; // Пользовательские сообщения для успешных ответов
     };
-    error?: string; // Пользовательское сообщение для ошибок
+    error?: string | ((error: AxiosError) => string); // Пользовательское сообщение для ошибок или функция для обработки ошибок
   };
+  onSuccess?: (data: T) => void; // Коллбэк для успешного выполнения
+  onError?: (error: AxiosError) => void; // Коллбэк для обработки ошибок
 }
 
 interface UseFetchResult<T> {
   data: T | null;
   error: string | null;
   isLoading: boolean;
-  refetch: () => void; // Функция для повторного запроса
+  refetch: () => Promise<void>; // Функция для повторного запроса, возвращает Promise
   abort: () => void; // Функция для отмены запроса
 }
 
 const useFetch = <T>({
   url,
-  method = 'GET', // По умолчанию GET
+  method = 'GET',
   params,
   data,
   config,
   enabled = true,
-  skipOnMount = false, // Пропускать запрос при монтировании
-  customMessages, // Пользовательские сообщения
+  skipOnMount = false,
+  customMessages,
+  onSuccess,
+  onError,
 }: UseFetchProps<T>): UseFetchResult<T> => {
   const [dataState, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [abortController, setAbortController] = useState<AbortController | null>(null);
 
-  const defaultMessages = {
-    success: {
-      GET: 'Данные успешно загружены!',
-      POST: 'Данные успешно добавлены!',
-      PUT: 'Данные успешно обновлены!',
-      DELETE: 'Данные успешно удалены!',
-    },
-    error: 'Произошла ошибка при загрузке данных.',
-  };
+  // Используем useMemo для создания AbortController, чтобы избежать лишних ререндеров
+  const abortController = useMemo(() => new AbortController(), []);
+
+  const defaultMessages = useMemo(
+    () => ({
+      success: {
+        GET: 'Данные успешно загружены!',
+        POST: 'Данные успешно добавлены!',
+        PUT: 'Данные успешно обновлены!',
+        DELETE: 'Данные успешно удалены!',
+      },
+      error: 'Произошла ошибка при загрузке данных.',
+    }),
+    []
+  );
 
   const fetchData = useCallback(async () => {
-    if (!enabled) return; // Если запрос отключен, ничего не делаем
+    if (!enabled) return;
 
-    const controller = new AbortController();
-    setAbortController(controller);
     setIsLoading(true);
-    setError(null); // Сбрасываем ошибку перед новым запросом
+    setError(null);
 
     try {
       const response = await axios({
@@ -161,59 +168,128 @@ const useFetch = <T>({
         params,
         data,
         ...config,
-        signal: controller.signal, // Передаем сигнал для отмены
+        signal: abortController.signal,
       });
+
       setData(response.data);
+      onSuccess?.(response.data);
+
       showNotification({
         title: 'Успех',
         message: customMessages?.success?.[method] || defaultMessages.success[method] || defaultMessages.success.GET,
         color: 'green',
       });
     } catch (err) {
-      if (axios.isAxiosError(err) && err.response) {
-        setError(err.response.data.message || customMessages?.error || defaultMessages.error);
-      } else if (err.name === 'CanceledError') {
-        // Игнорируем ошибку отмены
-        return;
-      } else {
-        setError(customMessages?.error || defaultMessages.error);
+      if (isCancel(err)) {
+        return; // Игнорируем ошибку отмены
       }
+
+      const axiosError = err as AxiosError;
+      const errorMessage =
+        typeof customMessages?.error === 'function'
+          ? customMessages.error(axiosError)
+          : axiosError.response?.data?.message || customMessages?.error || defaultMessages.error;
+
+      setError(errorMessage);
+      onError?.(axiosError);
+
       showNotification({
         title: 'Ошибка',
-        message: error || customMessages?.error || defaultMessages.error,
+        message: errorMessage,
         color: 'red',
       });
     } finally {
       setIsLoading(false);
     }
-  }, [url, method, params, data, config, enabled, customMessages, error]);
+  }, [url, method, params, data, config, enabled, customMessages, onSuccess, onError, abortController, defaultMessages]);
 
-  // Функция для повторного запроса
-  const refetch = () => {
-    fetchData();
-  };
+  const refetch = useCallback(async () => {
+    await fetchData();
+  }, [fetchData]);
 
-  // Функция для отмены запроса
-  const abort = () => {
-    if (abortController) {
-      abortController.abort();
-    }
-  };
+  const abort = useCallback(() => {
+    abortController.abort();
+  }, [abortController]);
 
   useEffect(() => {
     if (!skipOnMount) {
-      fetchData(); // Выполняем запрос при монтировании и изменении URL или параметров
+      fetchData();
     }
 
     return () => {
-      abort(); // Отменяем запрос при размонтировании
+      abort();
     };
-  }, [fetchData, skipOnMount]);
+  }, [fetchData, skipOnMount, abort]);
 
   return { data: dataState, error, isLoading, refetch, abort };
 };
 
 export default useFetch;
+
+Производные хуки
+import useFetch from './useFetch';
+import { AxiosRequestConfig, Method } from 'axios';
+
+// Базовая функция для создания хуков с общими настройками
+const createFetchHook = <T>(
+  method: Method,
+  defaultSuccessMessage: string,
+  defaultErrorMessage: string
+) => {
+  return ({
+    url,
+    params,
+    data,
+    config,
+    enabled,
+    skipOnMount,
+    customMessages,
+    onSuccess,
+    onError,
+  }: {
+    url: string;
+    params?: Record<string, any>;
+    data?: any;
+    config?: AxiosRequestConfig;
+    enabled?: boolean;
+    skipOnMount?: boolean;
+    customMessages?: {
+      success?: { [key in Method]?: string };
+      error?: string | ((error: any) => string);
+    };
+    onSuccess?: (data: T) => void;
+    onError?: (error: any) => void;
+  }) => {
+    return useFetch<T>({
+      url,
+      method,
+      params,
+      data,
+      config,
+      enabled,
+      skipOnMount,
+      customMessages: {
+        success: { [method]: defaultSuccessMessage, ...customMessages?.success },
+        error: customMessages?.error || defaultErrorMessage,
+      },
+      onSuccess,
+      onError,
+    });
+  };
+};
+
+// Функция для получения данных
+export const useGet = createFetchHook('GET', 'Данные успешно загружены!', 'Ошибка при загрузке данных.');
+
+// Функция для создания данных
+export const useCreate = createFetchHook('POST', 'Данные успешно созданы!', 'Ошибка при создании данных.');
+
+// Функция для обновления данных
+export const useUpdate = createFetchHook('PUT', 'Данные успешно обновлены!', 'Ошибка при обновлении данных.');
+
+// Функция для удаления данных
+export const useDelete = createFetchHook('DELETE', 'Данные успешно удалены!', 'Ошибка при удалении данных.');
+
 
 import useFetch from './useFetch'; // Импортируйте ваш хук useFetch
 
