@@ -18,73 +18,119 @@ https://github.com/aranlucas/react-hook-form-mantine
 https://chromewebstore.google.com/detail/linguist-%D0%BF%D0%B5%D1%80%D0%B5%D0%B2%D0%BE%D0%B4%D1%87%D0%B8%D0%BA-%D0%B2%D0%B5%D0%B1-%D1%81/gbefmodhlophhakmoecijeppjblibmie?pli=1 - offline переводчик
 
 ```
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 export type ScrollerProps = {
   /**
-   * custom loader to use
+   * Custom loader to display while fetching data
    */
   loader?: React.ReactNode;
 
   /**
-   * the content within the scroller
+   * The content within the scroller
    */
-  children?: React.ReactNode
+  children?: React.ReactNode;
 
   /**
-   * a function that triggers the load for data.
-   * @returns anything
+   * A function that triggers the load for more data.
+   * @returns Promise<void>
    */
   fetchMoreData: () => Promise<void>;
+
+  /**
+   * Height of the scroller container (default: '400px')
+   */
+  height?: string;
+
+  /**
+   * Threshold in pixels to trigger fetching data before reaching the bottom (default: 100)
+   */
+  threshold?: number;
+
+  /**
+   * Whether to disable the infinite scroll functionality (default: false)
+   */
+  disabled?: boolean;
+
+  /**
+   * Callback triggered when loading starts
+   */
+  onLoadStart?: () => void;
+
+  /**
+   * Callback triggered when loading ends
+   */
+  onLoadEnd?: () => void;
+
+  /**
+   * Custom styles for the scroller container
+   */
+  style?: React.CSSProperties;
+
+  /**
+   * Class name for the scroller container
+   */
+  className?: string;
 };
 
-interface ScrollerProps {
-  loader: React.ReactNode;
-  children: React.ReactNode;
-  fetchMoreData: () => Promise<void>;
-  height?: string; // Пропс для настройки высоты контейнера
-}
-
-export function Scroller({ loader, children, fetchMoreData, height = '400px' }: ScrollerProps) {
+export function Scroller({
+  loader,
+  children,
+  fetchMoreData,
+  height = '400px',
+  threshold = 100,
+  disabled = false,
+  onLoadStart,
+  onLoadEnd,
+  style,
+  className,
+}: ScrollerProps) {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      if (!containerRef.current) return;
+  // Мемоизация функции handleScroll для предотвращения лишних ререндеров
+  const handleScroll = useCallback(() => {
+    if (!containerRef.current || isLoading || disabled) return;
 
-      // Set a threshold value to trigger fetching data
-      const threshold = 100;
+    const scrollPosition = containerRef.current.scrollTop + containerRef.current.clientHeight;
+    const bottomPosition = containerRef.current.scrollHeight - threshold;
 
-      // Calculate the distance from the bottom of the container
-      const scrollPosition = containerRef.current.scrollTop + containerRef.current.clientHeight;
-      const bottomPosition = containerRef.current.scrollHeight - threshold;
+    if (scrollPosition >= bottomPosition) {
+      setIsLoading(true);
+      onLoadStart?.();
 
-      // Check if the user has scrolled to the bottom or beyond the threshold
-      if (scrollPosition >= bottomPosition && !isLoading) {
-        setIsLoading(true);
-        fetchMoreData().then(() => {
+      fetchMoreData()
+        .then(() => {
           setIsLoading(false);
+          onLoadEnd?.();
+        })
+        .catch((error) => {
+          console.error('Error fetching more data:', error);
+          setIsLoading(false);
+          onLoadEnd?.();
         });
-      }
-    };
+    }
+  }, [fetchMoreData, isLoading, threshold, disabled, onLoadStart, onLoadEnd]);
 
+  useEffect(() => {
     const container = containerRef.current;
     if (container) {
-      // Add event listener for scroll event on the container
-      container.addEventListener('scroll', handleScroll);
+      container.addEventListener('scroll', handleScroll, { passive: true }); // Используем passive для улучшения производительности
     }
 
-    // Clean up: remove event listener when component unmounts
     return () => {
       if (container) {
         container.removeEventListener('scroll', handleScroll);
       }
     };
-  }, [isLoading, fetchMoreData]);
+  }, [handleScroll]);
 
   return (
-    <div ref={containerRef} style={{ overflowY: 'auto', maxHeight: height }}>
+    <div
+      ref={containerRef}
+      style={{ overflowY: 'auto', maxHeight: height, ...style }}
+      className={className}
+    >
       {children}
       {isLoading && loader}
     </div>
