@@ -1,16 +1,47 @@
 # Next.js 15 Boilerplate
 
-YUP или ZOD
+```
+// components/Form.tsx
+import { useForm, FormProvider, UseFormProps, UseFormReturn } from 'react-hook-form';
+import { ReactNode } from 'react';
 
+// Тип для пропсов компонента Form
+interface FormProps<TFormValues extends Record<string, any>> {
+  children: ReactNode; // Дочерние элементы формы
+  onSubmit?: (
+    data: TFormValues,
+    methods: UseFormReturn<TFormValues>
+  ) => void; // Обработчик отправки формы
+  formOptions?: UseFormProps<TFormValues>; // Опции для useForm
+  [key: string]: any; // Остальные пропсы, которые могут быть переданы в HTML-тег <form>
+}
 
-https://music.youtube.com/playlist?list=OLAK5uy_mYRDUXJvuDMElZKN5f1rAPJEB2uM0witE - новый альбом дарьяны
-https://music.youtube.com/playlist?list=OLAK5uy_mJbKoW3JGyY0LrzXK8B6u7sbqJF3ehqZ4 - новый альбом фараона
-https://music.youtube.com/playlist?list=OLAK5uy_nD3vrN1YkWpGGklSQefdH_lIASMVupyJA - альбом френдли тага
-https://music.youtube.com/playlist?list=OLAK5uy_nn1Ldam22ygDJzT3MujFmvMrOLFPza30c - новый трек фортуны
-https://music.youtube.com/playlist?list=OLAK5uy_k-bBqkKO4zEdRc2Mz2cy4w_4AR4nRJjj8 - новый трек ICEGERGERT
-https://music.youtube.com/playlist?list=OLAK5uy_ncNl677ltYq_-OGBXM6UycnhotSjxiQNE - новый трек мейби лсп
+const Form = <TFormValues extends Record<string, any>>({
+  children,
+  onSubmit,
+  formOptions = {},
+  ...props
+}: FormProps<TFormValues>) => {
+  // Инициализируем useForm с переданными опциями
+  const methods = useForm<TFormValues>(formOptions);
 
-https://music.youtube.com/playlist?list=OLAK5uy_n-eO_EgFs0opO1OKWmAVclouWF9igQafQ - огромный куш Юпи
+  // Обработчик отправки формы
+  const handleSubmit = methods.handleSubmit((data) => {
+    if (onSubmit) {
+      onSubmit(data, methods); // Передаем данные формы и методы useForm в обработчик
+    }
+  });
+
+  return (
+    // Оборачиваем форму в FormProvider для предоставления контекста
+    <FormProvider {...methods}>
+      <form onSubmit={handleSubmit} {...props}>
+        {children}
+      </form>
+    </FormProvider>
+  );
+};
+```
 
 https://daisyui.com/
 https://github.com/aranlucas/react-hook-form-mantine
