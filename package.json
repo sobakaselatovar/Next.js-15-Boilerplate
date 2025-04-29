@@ -20,6 +20,7 @@
     "*.{js,jsx,ts,tsx}": "eslint --cache --fix --cache-location ./node_modules/.cache/.eslintcache"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.0.1",
     "@mantine/charts": "^7.17.5",
     "@mantine/core": "^7.17.5",
     "@mantine/dates": "^7.17.5",
@@ -28,6 +29,8 @@
     "@mantine/notifications": "^7.17.5",
     "@next/bundle-analyzer": "^15.3.1",
     "@tabler/icons-react": "^3.31.0",
+    "axios": "^1.9.0",
+    "clsx": "^2.1.1",
     "dayjs": "^1.11.13",
     "lodash": "^4.17.21",
     "next": "^15.3.1",
@@ -42,6 +45,7 @@
     "@commitlint/cli": "^19.5.0",
     "@commitlint/config-conventional": "^19.5.0",
     "@trivago/prettier-plugin-sort-imports": "^5.2.2",
+    "@types/axios": "^0.9.36",
     "@types/lodash": "^4.17.16",
     "@types/node": "^22.8.1",
     "@types/react": "^19",
