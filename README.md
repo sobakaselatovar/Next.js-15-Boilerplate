@@ -1,6 +1,71 @@
 # Next.js 15 Boilerplate
 
 ```
+import { useState, useEffect, useMemo, lazy, ComponentType } from 'react';
+
+// Тип для пропсов, которые принимает компонент
+type DynamicImportProps = Record<string, any>;
+
+// Тип для результата хука
+interface UseDynamicImportResult {
+  Component: ComponentType<DynamicImportProps> | null;
+  loading: boolean;
+  error: Error | null;
+}
+
+// Кастомный хук
+export const useDynamicImport = (filePath: string): UseDynamicImportResult => {
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  // Мемоизируем функцию импорта, чтобы избежать повторных вызовов при ререндерах
+  const LazyComponent = useMemo(
+    () =>
+      lazy(() =>
+        import(/* @vite-ignore */ filePath).catch((err) => {
+          throw new Error(`Failed to load module from ${filePath}: ${err.message}`);
+        }),
+      ),
+    [filePath],
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadComponent = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        // Предзагрузка компонента
+        await import(/* @vite-ignore */ filePath);
+      } catch (err) {
+        if (isMounted) {
+          setError(err instanceof Error ? err : new Error('Failed to load component'));
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadComponent();
+
+    // Очистка при размонтировании
+    return () => {
+      isMounted = false;
+    };
+  }, [filePath]);
+
+  return {
+    Component: error ? null : LazyComponent,
+    loading,
+    error,
+  };
+};
+```
+
+```
 // components/Form.tsx
 import { useForm, FormProvider, UseFormProps, UseFormReturn } from 'react-hook-form';
 import { ReactNode } from 'react';
