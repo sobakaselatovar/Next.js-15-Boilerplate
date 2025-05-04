@@ -37,7 +37,7 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-hook-form": "^7.56.1",
-    "react-input-mask": "^2.0.4",
+    "react-imask": "^7.6.1",
     "recharts": "^2.15.3",
     "zod": "^3.24.3"
   },
@@ -45,7 +45,6 @@
     "@commitlint/cli": "^19.5.0",
     "@commitlint/config-conventional": "^19.5.0",
     "@trivago/prettier-plugin-sort-imports": "^5.2.2",
-    "@types/axios": "^0.9.36",
     "@types/lodash": "^4.17.16",
     "@types/node": "^22.8.1",
     "@types/react": "^19",
